@@ -1,0 +1,564 @@
+<!--
+  Seventh Month News Network Writer Application - AESTHETIC UPGRADE
+  This single-file application uses Firebase Firestore for persistent storage
+  and Tailwind CSS for a modern, responsive design.
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SMNN Report Publisher</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+        
+        /* Custom Styles for Aesthetic Upgrade */
+        body {
+            font-family: 'Inter', sans-serif;
+            /* Subtle texture background for depth */
+            background-color: #f3f4f6;
+            background-image: url("data:image/svg+xml,%3Csvg width='6' height='6' viewBox='0 0 6 6' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23e5e7eb' fill-opacity='0.5' fill-rule='evenodd'%3E%3Cpath d='M3 0h3v3H3V0zm0 3h3v3H3V3z'/%3E%3C/g%3E%3C/svg%3E");
+        }
+        
+        /* Enhanced Card and Shadow Effect */
+        .card {
+            background-color: #ffffff;
+            border-radius: 1rem; /* More rounded */
+            box-shadow: 0 10px 20px -5px rgba(0, 0, 0, 0.1), 0 3px 6px -2px rgba(0, 0, 0, 0.05);
+            transition: transform 0.2s, box-shadow 0.2s;
+            border-top: 5px solid #EF4444; /* Stronger accent color */
+        }
+        .card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 30px -5px rgba(0, 0, 0, 0.15), 0 5px 10px -3px rgba(0, 0, 0, 0.08);
+        }
+
+        /* Responsive aspect ratio for video embeds (16:9) */
+        .aspect-video {
+            aspect-ratio: 16 / 9;
+        }
+        
+        /* Button Styles with Depth */
+        .btn-primary {
+            @apply bg-red-600 text-white font-bold py-3 rounded-xl shadow-lg hover:bg-red-700 transition duration-300;
+        }
+        .btn-secondary {
+            @apply bg-blue-500 text-white font-bold py-3 rounded-xl shadow-lg hover:bg-blue-600 transition duration-300;
+        }
+
+        /* Modal specific styling */
+        .modal-overlay {
+            z-index: 50;
+            background-color: rgba(0, 0, 0, 0.7); /* Darker overlay */
+        }
+    </style>
+</head>
+<body class="p-4 sm:p-6 md:p-10">
+
+    <div id="app" class="max-w-4xl mx-auto">
+        <!-- Header: Prominent and Styled -->
+        <header class="text-center mb-10 p-6 card border-t-8 border-red-500 shadow-xl">
+            <div class="flex flex-col items-center justify-center">
+                <!-- LOGO IMAGE (Base64 data integrated) -->
+                <img
+                    id="logo-img"
+                    src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MDAgNTAwIiBzdHlsZT0iYmFja2dyb3VuZC1jb2xvcjp0cmFuc3BhcmVudDt3aWR0aDoyNTBweDtoZWlnaHQ6MjUwcHg7Ij4KICAgIDxkZWZzPgogICAgICAgIDxsaW5lYXJHcmFkaWVudCBpZD0iZ29sZF9ncmFkaWVudCIgeDE9IjAlIiB5MT0iMCUiIHgyPSIwJSIgeTI9IjEwMCUiPgogICAgICAgICAgICA8c3RvcCBvZmZzZXQ9IjAlIiBzdG9wLWNvbG9yPSIjRkZENzAwIi8+CiAgICAgICAgICAgIDxzdG9wIG9mZnNldD0iMTAwJSIgc3RvcC1jb2xvcj0iI0ZGQUQwMCIvPgogICAgICAgIDwvbGluZWFyR3JhZGllbnQ+CiAgICAgICAgPHN5bWJvbCBpZD0ic2V2ZW5fcmF5Ij4KICAgICAgICAgICAgPHJlY3QgeD0iLTIuNSIgeT0iLTI1IiB3aWR0aD0iNSIgaGVpZ2h0PSIyNSIgZmlsbD0idXJsKCNnb2xkX2dyYWRpZW50KSIgc3Ryb2tlPSJub25lIi8+CiAgICAgICAgPC9zeW1ib2w+CiAgICA8L2RlZnM+CgogICAgPCEtLSAxLiBDaXJjbGUgQkcgLS0+CiAgICA8Y2lyY2xlIGN4PSIyNTAiIGN5PSIyNTAiIHI9IjI0MCIgZmlsbD0iIzE2MzI1MSIvPgogICAgPHBhdGggZD0iTTI1MCAyNUEyMjUgMjI1IDAgMCAxIDI1MCA0NzVBOTggOTggMCAwIDAgMjUwIDQwMiAyMDIgMjAyIDAgMCAwIDQ2Ni44IDIwNC4xQTIyNSAyMjUgMCAwIDAgMjUwIDI1WiIgc3Ryb2tlPSJ1cmwoI2dvbGRfZ3JhZGllbnQpIiBzdHJva2Utd2lkdGg9IjgiIGZpbGw9Im5vbmUiLz4KCiAgICA8IS0tIDguIENlbnRyYWwgU2Nyb2xsIHdpdGggTGlnaHQgLS0+CiAgICA8ZyB0cmFuc2Zvcm09InRyYW5zbGF0ZSgyNTAgMjkwKSBzY2FsZSgxLjMpIj4KICAgICAgICA8IS0tIFRvcCBSYXlzIC0tPgogICAgICAgIDxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKDAgLTUwKSI+CiAgICAgICAgICAgIDx1c2UgaHJlZj0iI3NldmVuX3JheSIgdHJhbnNmb3JtPSJyb3RhdGUoMCkiLz4KICAgICAgICAgICAgPHVzZSBocmVmPSIjc2V2ZW5fcmF5IiB0cmFuc2Zvcm09InJvdGF0ZSg1MS40KSIvPgogICAgICAgICAgICA8dXNlIGhyZWY9IiNzZXZlbl9yYXkiIHRyYW5zZm9ybT0icm90YXRlKDEwMi44KSIvPgogICAgICAgICAgICA8dXNlIGhyZWY9IiNzZXZlbl9yYXkiIHRyYW5zZm9ybT0icm90YXRlKDE1NC4yKSIvPgogICAgICAgICAgICA8dXNlIGhyZWY9IiNzZXZlbl9yYXkiIHRyYW5zZm9ybT0icm90YXRlKDIwNS42KSIvPgogICAgICAgICAgICA8dXNlIGhyZWY9IiNzZXZlbl9yYXkiIHRyYW5zZm9ybT0icm90YXRlKDI1NykiLz4KICAgICAgICAgICAgPHVzZSBocmVmPSIjc2V2ZW5fcmF5IiB0cmFuc2Zvcm09InJvdGF0ZSgzMDguNCkiLz4KICAgICAgICA8L2c+CgogICAgICAgIDwhLS0gU2hpbmluZyBTY3JvbGwgLS0+CiAgICAgICAgPHBhdGggZD0iTS0xMDAgNTBIMTAwVi01MEgtMTAwWiIgc3Ryb2tlPSJ1cmwoI2dvbGRfZ3JhZGllbnQpIiBzdHJva2Utd2lkdGg9IjQiIGZpbGw9IiNGRkZGRkYiLz4KICAgICAgICA8cGF0aCBkPSJNLTkwIDI1SDQ5TDUwIC00NUwtNzAgMjBaIiBmaWxsPSJub25lIiBzdHJva2U9IiMxMTExMTEiIHN0cm9rZS13aWR0aD0iMiIvPgogICAgICAgIDxwYXRoIGQ9Ik05MCAyNUwtNTAgNDVMLTQwIC0yMEw3MCAtNDVaIiBmaWxsPSJub25lIiBzdHJva2U9IiMxMTExMTEiIHN0cm9rZS13aWR0aD0iMiIvPgogICAgICAgIDxwYXRoIGQ9Ik0tNzAtMzBINzAiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzExMTExMSIgc3Ryb2tlLXdpZHRoPSIyIi8+CiAgICAgICAgPHBhdGggd2lkdGg9IjYiIGhlaWdodD0iNiIgZmlsbD0iI2U1ZTdlYiIgZmlsbC1vcGFjaXR5PSIwLjUiIGZpbGwtcnVsZT0iZXZlbm9kZCI+PHBhdGggZD0iTTMgMGgzdjNIM1Ywem0wIDNoM3YzSDNWMyIvPjwvZz48L3N2Zz47"
+                    alt="Seventh Month Reform Movement Logo"
+                    class="w-32 h-32 mx-auto mb-4"
+                />
+                <h1 class="text-4xl font-extrabold text-gray-900 tracking-tight">
+                    Seventh Month News Network
+                </h1>
+                <p class="text-md text-gray-600 mt-2 max-w-lg mx-auto">
+                    A dedicated platform for the **Seventh Month Reform Movement** to publish articles, **restoring primitive Godliness and preparing the world for the return of Jesus.**
+                </p>
+            </div>
+            <div id="auth-status" class="mt-4 text-xs text-gray-400 break-words">Loading authentication...</div>
+        </header>
+
+        <!-- Loading Indicator -->
+        <div id="loading-indicator" class="text-center p-8">
+            <div class="animate-spin rounded-full h-10 w-10 border-b-4 border-red-500 inline-block"></div>
+            <p class="text-sm text-gray-600 mt-3 font-semibold">Connecting to the Divine Archive...</p>
+        </div>
+
+        <!-- Main Content (Form and List) -->
+        <div id="main-content" class="space-y-10 hidden">
+
+            <!-- News Entry Form -->
+            <section class="card p-6 shadow-2xl">
+                <h2 class="text-2xl font-bold text-gray-800 mb-6 flex items-center border-b pb-3">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-blue-600 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                    <span id="form-title">Submit New Weekly Report</span>
+                </h2>
+                <form id="news-form" class="space-y-5">
+                    
+                    <!-- Title & Date Group -->
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div class="sm:col-span-2">
+                            <label for="article-title" class="block text-sm font-medium text-gray-700 mb-1">Article Title</label>
+                            <input type="text" id="article-title" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition shadow-sm" placeholder="e.g., Week 3 Progress Report">
+                        </div>
+                        <div>
+                            <label for="article-date" class="block text-sm font-medium text-gray-700 mb-1">Week Ending Date</label>
+                            <input type="date" id="article-date" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition shadow-sm">
+                        </div>
+                    </div>
+
+                    <!-- Media URLs Group -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                         <!-- Image URL Field -->
+                        <div>
+                            <label for="image-url" class="block text-sm font-medium text-gray-700 mb-1 flex items-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                                Image URL (Optional)
+                            </label>
+                            <input type="url" id="image-url" placeholder="Paste direct image link" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition shadow-sm">
+                        </div>
+
+                        <!-- Video URL Field -->
+                        <div>
+                            <label for="video-url" class="block text-sm font-medium text-gray-700 mb-1 flex items-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.55-2.28c.84-.42 1.45.69.75 1.34L15 13V10zm-6 0v3l4.55 2.27c.84.42 1.45-.69.75-1.34L9 10zm-6 0v3l4.55 2.27c.84.42 1.45-.69.75-1.34L3 10z" /></svg>
+                                Video URL (Optional - YouTube preferred)
+                            </label>
+                            <input type="url" id="video-url" placeholder="Paste YouTube link or video file link" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition shadow-sm">
+                        </div>
+                    </div>
+
+
+                    <div>
+                        <label for="article-content" class="block text-sm font-medium text-gray-700 mb-1">News Content (Full Report Text)</label>
+                        <textarea id="article-content" rows="8" required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition shadow-sm resize-y" placeholder="Write the full message, update, or report here."></textarea>
+                    </div>
+
+                    <div id="form-actions" class="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-4 pt-2">
+                        <button type="submit" id="submit-btn" class="flex-grow btn-primary disabled:opacity-50" disabled>
+                            <span id="btn-text">Save Article</span>
+                        </button>
+                        <button type="button" id="cancel-edit-btn" class="hidden sm:w-1/3 bg-gray-300 text-gray-800 py-3 rounded-xl font-bold hover:bg-gray-400 transition duration-300 shadow-md focus:outline-none focus:ring-4 focus:ring-gray-400 focus:ring-opacity-50" onclick="resetFormState()">
+                            Cancel Edit
+                        </button>
+                    </div>
+
+                    <div id="form-message" class="text-sm text-center font-medium pt-2 hidden"></div>
+                </form>
+            </section>
+
+            <!-- Articles List -->
+            <section>
+                <h2 class="text-2xl font-bold text-gray-800 mb-6 flex items-center border-b-2 pb-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-red-600 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 2v10a2 2 0 01-2 2h-6m-9-6h9" /></svg>
+                    Archived Reports & Messages
+                </h2>
+                <div id="articles-list" class="space-y-6">
+                    <!-- Articles will be inserted here -->
+                    <p class="text-center text-gray-500 p-6 card shadow-inner border-t-0" id="empty-state">
+                        No reports have been archived yet. Use the form above to submit your first report to the Network.
+                    </p>
+                </div>
+            </section>
+        </div>
+
+    </div>
+
+    <!-- Confirmation Modal HTML Structure -->
+    <div id="delete-modal-overlay" class="modal-overlay fixed inset-0 hidden flex items-center justify-center transition-opacity duration-300 ease-in-out p-4">
+        <div id="delete-modal-content" class="bg-white p-8 rounded-xl shadow-2xl transform transition-transform duration-300 ease-in-out scale-100 w-full max-w-sm">
+            <h3 class="text-2xl font-bold text-red-600 mb-4">Confirm Deletion</h3>
+            <p id="modal-text" class="text-gray-700 mb-8">Are you sure you want to permanently delete this report? This action cannot be undone.</p>
+            <div class="flex justify-end space-x-3">
+                <button onclick="hideDeleteConfirmation()" class="px-5 py-2 bg-gray-300 text-gray-800 font-medium rounded-lg hover:bg-gray-400 transition shadow-md">
+                    Cancel
+                </button>
+                <button id="confirm-delete-btn" class="px-5 py-2 bg-red-600 text-white font-medium rounded-lg hover:bg-red-700 transition shadow-md">
+                    Delete Permanently
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        // Global variables provided by the Canvas environment
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        if (!firebaseConfig) {
+            document.getElementById('auth-status').textContent = 'Error: Firebase configuration missing.';
+            document.getElementById('loading-indicator').classList.add('hidden');
+            return;
+        }
+
+        // --- Firebase Imports ---
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, addDoc, onSnapshot, collection, query, serverTimestamp, setLogLevel, doc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- Firebase Initialization and Authentication ---
+        setLogLevel('Debug'); // Enable debug logging
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+
+        let userId = null;
+        let isAuthReady = false;
+        let currentEditId = null; // State to track the document ID being edited
+        let articlesCache = []; // Cache to store fetched articles for quick editing lookup
+
+        // UI Element References
+        const authStatusEl = document.getElementById('auth-status');
+        const loadingIndicatorEl = document.getElementById('loading-indicator');
+        const mainContentEl = document.getElementById('main-content');
+        const articlesListEl = document.getElementById('articles-list');
+        const newsForm = document.getElementById('news-form');
+        const submitBtn = document.getElementById('submit-btn');
+        const btnText = document.getElementById('btn-text');
+        const formMessageEl = document.getElementById('form-message');
+        const emptyStateEl = document.getElementById('empty-state');
+        const formTitleEl = document.getElementById('form-title');
+        const cancelEditBtn = document.getElementById('cancel-edit-btn');
+        // Form field references
+        const articleTitleEl = document.getElementById('article-title');
+        const articleDateEl = document.getElementById('article-date');
+        const imageUrlEl = document.getElementById('image-url');
+        const videoUrlEl = document.getElementById('video-url');
+        const articleContentEl = document.getElementById('article-content');
+        // Modal references
+        const deleteModalOverlay = document.getElementById('delete-modal-overlay');
+        const confirmDeleteBtn = document.getElementById('confirm-delete-btn');
+
+
+        /**
+         * Generates an HTML embed code for YouTube videos or direct video files.
+         * @param {string} url - The video URL.
+         * @returns {string} HTML embed code or null.
+         */
+        function getVideoEmbedHtml(url) {
+            if (!url) return '';
+            const youtubeRegex = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mb)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/;
+            const match = url.match(youtubeRegex);
+
+            if (match && match[1]) {
+                const videoId = match[1];
+                return `
+                    <div class="w-full aspect-video rounded-xl overflow-hidden mb-4 shadow-xl border border-gray-200">
+                        <iframe
+                            class="w-full h-full"
+                            src="https://www.youtube.com/embed/${videoId}?rel=0"
+                            frameborder="0"
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                            allowfullscreen
+                            loading="lazy"
+                        ></iframe>
+                    </div>
+                `;
+            }
+
+            if (url.match(/\.(mp4|webm|ogg)$/i)) {
+                return `
+                    <video controls class="w-full aspect-video rounded-xl mb-4 shadow-xl border border-gray-200" loading="lazy">
+                        <source src="${url}" type="video/${url.split('.').pop()}">
+                        Your browser does not support the video tag.
+                    </video>
+                `;
+            }
+
+            return '';
+        }
+
+        /**
+         * Generates responsive image HTML.
+         * @param {string} url - The image URL.
+         * @returns {string} HTML image tag or empty string.
+         */
+        function getImageHtml(url) {
+            if (!url) return '';
+            const placeholderUrl = `https://placehold.co/600x400/CCCCCC/333333?text=Image+Unavailable`;
+
+            return `
+                <img
+                    src="${url}"
+                    onerror="this.onerror=null;this.src='${placeholderUrl}';"
+                    alt="News Article Image"
+                    class="w-full h-auto max-h-96 object-contain rounded-xl mb-4 shadow-xl border border-gray-200"
+                    loading="lazy"
+                />
+            `;
+        }
+
+        // --- Form State Management ---
+        window.resetFormState = function() {
+            currentEditId = null;
+            newsForm.reset();
+            formTitleEl.textContent = 'Submit New Weekly Report';
+            btnText.textContent = 'Save Article';
+            submitBtn.classList.remove('btn-secondary', 'bg-blue-500', 'hover:bg-blue-600');
+            submitBtn.classList.add('btn-primary', 'bg-red-600', 'hover:bg-red-700');
+            cancelEditBtn.classList.add('hidden');
+            formMessageEl.classList.add('hidden');
+            window.scrollTo(0, 0); // Scroll to top to focus on the form
+        }
+
+        window.editArticle = function(articleId) {
+            const article = articlesCache.find(a => a.id === articleId);
+            if (!article) {
+                console.error("Article not found in cache for editing:", articleId);
+                return;
+            }
+
+            // 1. Set the edit state
+            currentEditId = articleId;
+
+            // 2. Populate form fields
+            articleTitleEl.value = article.title || '';
+            articleDateEl.value = article.articleDate || '';
+            imageUrlEl.value = article.imageUrl || '';
+            videoUrlEl.value = article.videoUrl || '';
+            articleContentEl.value = article.content || '';
+
+            // 3. Update button and title for editing
+            formTitleEl.textContent = `Editing: ${article.title}`;
+            btnText.textContent = 'Update Article';
+            submitBtn.classList.remove('btn-primary', 'bg-red-600', 'hover:bg-red-700');
+            submitBtn.classList.add('btn-secondary', 'bg-blue-500', 'hover:bg-blue-600');
+            cancelEditBtn.classList.remove('hidden');
+            formMessageEl.classList.add('hidden');
+            window.scrollTo(0, 0); // Scroll to top to focus on the form
+        }
+
+        // --- Deletion Modal Logic ---
+        window.showDeleteConfirmation = function(articleId) {
+            if (!articleId) return;
+
+            // Set the delete action handler
+            confirmDeleteBtn.onclick = () => deleteArticle(articleId);
+
+            // Show the modal
+            deleteModalOverlay.classList.remove('hidden');
+            // Optional: prevent background scrolling
+            document.body.style.overflow = 'hidden';
+        }
+
+        window.hideDeleteConfirmation = function() {
+            deleteModalOverlay.classList.add('hidden');
+            // Re-enable background scrolling
+            document.body.style.overflow = '';
+        }
+
+        // --- Article Deletion ---
+        async function deleteArticle(articleId) {
+            hideDeleteConfirmation(); // Hide modal immediately
+
+            const path = `/artifacts/${appId}/users/${userId}/news_articles`;
+            const articleRef = doc(db, path, articleId);
+
+            submitBtn.disabled = true; // Disable main form while deleting
+            formMessageEl.textContent = 'Deleting article...';
+            formMessageEl.classList.remove('hidden', 'text-green-600');
+            formMessageEl.classList.add('text-red-600');
+
+            try {
+                await deleteDoc(articleRef);
+
+                formMessageEl.textContent = 'Article deleted successfully!';
+                formMessageEl.classList.remove('text-red-600');
+                formMessageEl.classList.add('text-green-600');
+                resetFormState(); // Ensure form is clean after deletion
+            } catch (error) {
+                console.error("Error removing document: ", error);
+                formMessageEl.textContent = `Error deleting article: ${error.message}`;
+            } finally {
+                submitBtn.disabled = false;
+            }
+        }
+
+        // --- Authentication Logic (Unchanged) ---
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                userId = user.uid;
+                authStatusEl.innerHTML = `Authenticated User ID: <code class="bg-gray-100 text-xs px-2 py-1 rounded text-gray-600 font-mono shadow-inner">${userId}</code>`;
+                isAuthReady = true;
+                submitBtn.disabled = false; // Enable button once authenticated
+                loadingIndicatorEl.classList.add('hidden');
+                mainContentEl.classList.remove('hidden');
+                listenForArticles();
+            } else {
+                try {
+                    const maxRetries = 3;
+                    let attempt = 0;
+                    while (attempt < maxRetries) {
+                        try {
+                            if (initialAuthToken) {
+                                await signInWithCustomToken(auth, initialAuthToken);
+                            } else {
+                                await signInAnonymously(auth);
+                            }
+                            break;
+                        } catch (error) {
+                            attempt++;
+                            if (attempt >= maxRetries) throw error;
+                            const delay = Math.pow(2, attempt) * 1000;
+                            await new Promise(resolve => setTimeout(resolve, delay));
+                        }
+                    }
+
+                } catch (error) {
+                    console.error("Firebase Auth Error (Retries Failed):", error);
+                    authStatusEl.textContent = 'Authentication failed. Check console for details.';
+                    loadingIndicatorEl.classList.add('hidden');
+                }
+            }
+        });
+
+        /**
+         * Renders the list of articles to the UI. (Updated to include Edit/Delete buttons)
+         */
+        function renderArticles(articles) {
+            articlesCache = articles; // Update the cache
+            articlesListEl.innerHTML = '';
+
+            if (articles.length === 0) {
+                emptyStateEl.classList.remove('hidden');
+                articlesListEl.appendChild(emptyStateEl);
+                return;
+            }
+
+            emptyStateEl.classList.add('hidden');
+
+            // Sort articles by date descending
+            articles.sort((a, b) => b.articleDate.localeCompare(a.articleDate));
+
+            articles.forEach(article => {
+                const articleEl = document.createElement('div');
+                articleEl.className = 'card p-6';
+
+                const dateText = article.articleDate ? new Date(article.articleDate + 'T00:00:00').toLocaleDateString() : 'N/A';
+                const mediaHtml = article.videoUrl ? getVideoEmbedHtml(article.videoUrl) :
+                                    (article.imageUrl ? getImageHtml(article.imageUrl) : '');
+
+                articleEl.innerHTML = `
+                    <div class="flex justify-between items-start mb-4">
+                        <div class="flex-1 min-w-0">
+                            <h3 class="text-2xl font-extrabold text-gray-900 mb-1">${article.title}</h3>
+                            <p class="text-sm text-red-600 font-semibold uppercase tracking-wider">Week Ending: ${dateText}</p>
+                        </div>
+                        <div class="flex space-x-2 flex-shrink-0">
+                            <button onclick="editArticle('${article.id}')" class="p-2 bg-blue-100 text-blue-600 rounded-full hover:bg-blue-200 transition shadow-md" aria-label="Edit Article">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-7-9l4 4L17 7l-4-4-2 2zM15 5l2 2" /></svg>
+                            </button>
+                            <button onclick="showDeleteConfirmation('${article.id}')" class="p-2 bg-red-100 text-red-600 rounded-full hover:bg-red-200 transition shadow-md" aria-label="Delete Article">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                            </button>
+                        </div>
+                    </div>
+                    ${mediaHtml}
+                    <div class="text-gray-800 leading-relaxed whitespace-pre-wrap mt-4 border-t pt-4">${article.content}</div>
+                `;
+                articlesListEl.appendChild(articleEl);
+            });
+        }
+
+        /**
+         * Sets up a real-time listener for the user's articles.
+         */
+        function listenForArticles() {
+            if (!isAuthReady || !userId) {
+                console.warn("Auth not ready or userId missing. Cannot listen for articles.");
+                return;
+            }
+
+            const path = `/artifacts/${appId}/users/${userId}/news_articles`;
+            const articlesColRef = collection(db, path);
+            const q = query(articlesColRef);
+
+            onSnapshot(q, (snapshot) => {
+                const articles = [];
+                snapshot.forEach((doc) => {
+                    articles.push({ id: doc.id, ...doc.data() });
+                });
+                renderArticles(articles);
+                console.log(`Successfully loaded ${articles.length} articles from Firestore.`);
+            }, (error) => {
+                console.error("Firestore Snapshot Listener Error:", error);
+                formMessageEl.textContent = `Error loading articles: ${error.message}`;
+                formMessageEl.classList.remove('hidden', 'text-green-600');
+                formMessageEl.classList.add('text-red-600');
+            });
+        }
+
+        // --- Form Submission Handler (Updated for Edit/Create) ---
+        newsForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            if (!isAuthReady || !userId) {
+                formMessageEl.textContent = 'Please wait for authentication to complete.';
+                formMessageEl.classList.remove('hidden', 'text-green-600');
+                formMessageEl.classList.add('text-red-600');
+                return;
+            }
+
+            const title = articleTitleEl.value.trim();
+            const date = articleDateEl.value;
+            const content = articleContentEl.value.trim();
+            const imageUrl = imageUrlEl.value.trim() || null;
+            const videoUrl = videoUrlEl.value.trim() || null;
+
+            if (!title || !date || !content) {
+                formMessageEl.textContent = 'Please fill out the Title, Date, and Content fields.';
+                formMessageEl.classList.remove('hidden', 'text-green-600');
+                formMessageEl.classList.add('text-red-600');
+                return;
+            }
+
+            formMessageEl.classList.add('hidden');
+            submitBtn.disabled = true;
+            btnText.textContent = currentEditId ? 'Updating...' : 'Saving...';
+            submitBtn.classList.add('opacity-70');
+
+            try {
+                const articleData = {
+                    title: title,
+                    articleDate: date,
+                    content: content,
+                    imageUrl: imageUrl,
+                    videoUrl: videoUrl,
+                    userId: userId,
+                };
+
+                const path = `/artifacts/${appId}/users/${userId}/news_articles`;
+
+                if (currentEditId) {
+                    // --- EDIT MODE ---
+                    const articleRef = doc(db, path, currentEditId);
+                    await updateDoc(articleRef, articleData);
+                    formMessageEl.textContent = 'Article updated successfully!';
+                } else {
+                    // --- CREATE MODE ---
+                    articleData.timestamp = serverTimestamp(); // Add timestamp only on creation
+                    await addDoc(collection(db, path), articleData);
+                    formMessageEl.textContent = 'Article saved successfully!';
+                }
+
+                // Final actions
+                formMessageEl.classList.remove('hidden', 'text-red-600');
+                formMessageEl.classList.add('text-green-600');
+                resetFormState(); // Reset form back to 'Create' mode
+
+            } catch (error) {
+                console.error("Error saving/updating document: ", error);
+                formMessageEl.textContent = `Error: ${error.message}`;
+                formMessageEl.classList.remove('hidden', 'text-green-600');
+                formMessageEl.classList.add('text-red-600');
+            } finally {
+                submitBtn.disabled = false;
+                btnText.textContent = currentEditId ? 'Update Article' : 'Save Article'; // This handles the state temporarily if an error occurred
+                submitBtn.classList.remove('opacity-70');
+            }
+        });
+    </script>
+</body>
+</html>
+
