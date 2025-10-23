@@ -1,0 +1,306 @@
+<!--
+  Seventh Month News Network Writer Application
+  This single-file application uses Firebase Firestore for persistent storage
+  and Tailwind CSS for responsive styling. It now includes the 'Seventh Month Reform Movement' logo.
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Seventh Month News Network Writer</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+        :root {
+            --primary-color: #EF4444; /* Red 500 */
+            --secondary-color: #3B82F6; /* Blue 500 */
+            --bg-color: #F9FAFB; /* Gray 50 */
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+        }
+        .article-card {
+            transition: transform 0.2s, box-shadow 0.2s;
+            white-space: pre-wrap; /* Ensures line breaks in content are respected */
+        }
+        .article-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+
+        /* Responsive aspect ratio for video embeds (16:9) */
+        .aspect-video {
+            aspect-ratio: 16 / 9;
+        }
+
+        /* Modal specific styling */
+        .modal-overlay {
+            z-index: 50; /* Tailwind z-50 */
+            background-color: rgba(0, 0, 0, 0.6);
+        }
+        .modal-content {
+            z-index: 51;
+            max-width: 90%;
+        }
+    </style>
+</head>
+<body class="p-4 sm:p-6 md:p-8">
+
+    <div id="app" class="max-w-4xl mx-auto">
+        <!-- Header: Replaced text with the logo image -->
+        <header class="text-center mb-8 p-4 bg-white rounded-xl shadow-lg border-t-4 border-red-500">
+            <div class="flex flex-col items-center justify-center">
+                <!-- LOGO IMAGE (Base64 data integrated) -->
+                <img
+                    id="logo-img"
+                    src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MDAgNTAwIiBzdHlsZT0iYmFja2dyb3VuZC1jb2xvcjp0cmFuc3BhcmVudDt3aWR0aDoyNTBweDtoZWlnaHQ6MjUwcHg7Ij4KICAgIDxkZWZzPgogICAgICAgIDxsaW5lYXJHcmFkaWVudCBpZD0iZ29sZF9ncmFkaWVudCIgeDE9IjAlIiB5MT0iMCUiIHgyPSIwJSIgeTI9IjEwMCUiPgogICAgICAgICAgICA8c3RvcCBvZmZzZXQ9IjAlIiBzdG9wLWNvbG9yPSIjRkZENzAwIi8+CiAgICAgICAgICAgIDxzdG9wIG9mZnNldD0iMTAwJSIgc3RvcC1jb2xvcj0iI0ZGQUQwMCIvPgogICAgICAgIDwvbGluZWFyR3JhZGllbnQ+CiAgICAgICAgPHN5bWJvbCBpZD0ic2V2ZW5fcmF5Ij4KICAgICAgICAgICAgPHJlY3QgeD0iLTIuNSIgeT0iLTI1IiB3aWR0aD0iNSIgaGVpZ2h0PSIyNSIgZmlsbD0idXJsKCNnb2xkX2dyYWRpZW50KSIgc3Ryb2tlPSJub25lIi8+CiAgICAgICAgPC9zeW1ib2w+CiAgICA8L2RlZnM+CgogICAgPCEtLSAxLiBDaXJjbGUgQkcgLS0+CiAgICA8Y2lyY2xlIGN4PSIyNTAiIGN5PSIyNTAiIHI9IjI0MCIgZmlsbD0iIzE2MzI1MSIvPgogICAgPHBhdGggZD0iTTI1MCAyNUEyMjUgMjI1IDAgMCAxIDI1MCA0NzVBOTggOTggMCAwIDAgMjUwIDQwMiAyMDIgMjAyIDAgMCAwIDQ2Ni44IDIwNC4xQTIyNSAyMjUgMCAwIDAgMjUwIDI1WiIgc3Ryb2tlPSJ1cmwoI2dvbGRfZ3JhZGllbnQpIiBzdHJva2Utd2lkdGg9IjgiIGZpbGw9Im5vbmUiLz4KCiAgICA8IS0tIDguIENlbnRyYWwgU2Nyb2xsIHdpdGggTGlnaHQgLS0+CiAgICA8ZyB0cmFuc2Zvcm09InRyYW5zbGF0ZSgyNTAgMjkwKSBzY2FsZSgxLjMpIj4KICAgICAgICA8IS0tIFRvcCBSYXlzIC0tPgogICAgICAgIDxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKDAgLTUwKSI+CiAgICAgICAgICAgIDx1c2UgaHJlZj0iI3NldmVuX3JheSIgdHJhbnNmb3JtPSJyb3RhdGUoMCkiLz4KICAgICAgICAgICAgPHVzZSBocmVmPSIjc2V2ZW5fcmF5IiB0cmFuc2Zvcm09InJvdGF0ZSg1MS40KSIvPgogICAgICAgICAgICA8dXNlIGhyZWY9IiNzZXZlbl9yYXkiIHRyYW5zZm9ybT0icm90YXRlKDEwMi44KSIvPgogICAgICAgICAgICA8dXNlIGhyZWY9IiNzZXZlbl9yYXkiIHRyYW5zZm9ybT0icm90YhdOKDE1NC4yKSIvPgogICAgICAgICAgICA8dXNlIGhyZWY9IiNzZXZlbl9yYXkiIHRyYW5zZm9ybT0icm90YXRlKDIwNS42KSIvPgogICAgICAgICAgICA8dXNlIGhyZWY9IiNzZXZlbl9yYXkiIHRyYW5zZm9ybT0icm90YXRlKDI1NykiLz4KICAgICAgICAgICAgPHVzZSBocmVmPSIjc2V2ZW5fcmF5IiB0cmFuc2Zvcm09InJvdGF0ZSgzaC40KSIvPgogICAgICAgIDwvZz4KCiAgICAgICAgPCEtLSBTaGluaW5nIFNjcm9sbCAtLT4KICAgICAgICA8cGF0aCBkPSJNLTEwMCA1MEgxMDBWLTUwSC0xMDBaIiBzdHJva2U9InVybCgjZ29sZF9ncmFkaWVudCkiIHN0cm9rZS13aWR0aD0iNCIgZmlsbD0iI0ZGRkZGRiIvPgogICAgICAgIDxwYXRoIGQ9Ik0tOTAgMjVINDlMNTAgLTQ1TC03MCAyMFoiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzExMTExMSIgc3Ryb2tlLXdpZHRoPSIyIi8+CiAgICAgICAgPHBhdGggZD0iTTkwIDI1TC01MCA0NUwtNDAgLTIwTDcwIC00NVoiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzExMTExMSIgc3Ryb2tlLXdpZHRoPSIyIi8+CiAgICAgICAgPHBhdGggZD0iTS03MC0zMEg3MCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMTEhMTExIiBzdHJva2Utd2lkdGg9IjIiLz4KICAgICAgICA8cGF0aCBkPSJNLTYwLTQ1SDYwIiBmaWxsPSJub25lIiBzdHJva2U9IiMxMTExMTEiIHN0cm9rZS13aWR0aD0iMiIvPgogICAgICAgIDwhLS0gTGlnaHQgQmFzZSAtLT4KICAgICAgICA8Y2lyY2xlIGN4PSIwIiBjeT0iMCIgcj0iMTUwIiBmaWxsPSJub25lIiBzdHJva2U9InVybCgjZ29sZF9ncmFkaWVudCkiIHN0cm9rZS13aWR0aD0iMTUiIHN0eWxlPSJvcGFjaXR5OjAuNSIvPgogICAgPC9nPgogICAgPCEtLSA1LjBFWEFUIFRFWFQgLS0+CiAgICA8dGV4dCB4PSIyNTAiIHk9IjQ5IiBmb250LXNpemU9IjMxIiBmb250LXdlaWdodD0iNzAwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjRkZENzAwIiBmb250LWZhbWlseT0iSW50ZXIiIHN0cm9rZT0iIzE2MzI1MSIgc3Ryb2tlLXdpZHRoPSIwLjciPgogICAgICAgIDx0c3BhbiBkeT0iMCUiPkZpcnN0IE1vdmVtZW50PC90c3Bhbj4KICAgIDwvdGV4dD4KCiAgICA8dGV4dCB4PSIyNTAiIHk9IjQ0OCIgZm9udC1zaXplPSIxNiIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0iI0ZGRkZGRiIgZm9udC1mYW1pbHk9IkludGVyIiBzdHlsZT0idGV4dC1zaGFkb3c6IDAgMCA0cHggIzExMTExMTsiPgogICAgICAgIDx0c3BhbiBkeT0iMCUiPlJFU1RPUklORyBQUklNSVRJVkUgR09ETEklRVNTIC4gUFJFQkFSSU5HIFRIRSBDT01JTkcgS0lORy4gPC90c3Bhbj4KICAgIDwvdGV4dD4KPC9zdmc+"
+                    alt="Seventh Month Reform Movement Logo"
+                    class="w-40 h-40 mx-auto mb-4"
+                />
+                <h1 class="text-4xl font-extrabold text-gray-900 tracking-tight">
+                    Seventh Month News Network
+                </h1>
+                <p class="text-sm text-gray-500 mt-2">Restoring Primitive Godliness & Preparing the World.</p>
+            </div>
+            <div id="auth-status" class="mt-3 text-xs text-gray-400 break-words">Loading authentication...</div>
+        </header>
+
+        <!-- Loading Indicator -->
+        <div id="loading-indicator" class="text-center p-4">
+            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-red-500 inline-block"></div>
+            <p class="text-sm text-gray-600 mt-2">Connecting to the archive...</p>
+        </div>
+
+        <!-- Main Content (Form and List) -->
+        <div id="main-content" class="space-y-8 hidden">
+
+            <!-- News Entry Form -->
+            <section class="bg-white p-6 rounded-xl shadow-lg border-l-4 border-blue-500">
+                <h2 class="text-2xl font-semibold text-gray-800 mb-4 flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-blue-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                    </svg>
+                    <span id="form-title">Submit a New Weekly Report</span>
+                </h2>
+                <form id="news-form" class="space-y-4">
+                    <div>
+                        <label for="article-title" class="block text-sm font-medium text-gray-700 mb-1">Article Title (e.g., Week 3 Progress Report)</label>
+                        <input type="text" id="article-title" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 shadow-sm">
+                    </div>
+                    <div>
+                        <label for="article-date" class="block text-sm font-medium text-gray-700 mb-1">Week Ending Date</label>
+                        <input type="date" id="article-date" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 shadow-sm">
+                    </div>
+
+                    <!-- Image URL Field -->
+                    <div>
+                        <label for="image-url" class="block text-sm font-medium text-gray-700 mb-1 flex items-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                            Image URL (Optional)
+                        </label>
+                        <input type="url" id="image-url" placeholder="Paste direct image link (e.g., .jpg, .png)" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 shadow-sm">
+                    </div>
+
+                    <!-- Video URL Field -->
+                    <div>
+                        <label for="video-url" class="block text-sm font-medium text-gray-700 mb-1 flex items-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.55-2.28c.84-.42 1.45.69.75 1.34L15 13V10zm-6 0v3l4.55 2.27c.84.42 1.45-.69.75-1.34L9 10zm-6 0v3l4.55 2.27c.84.42 1.45-.69.75-1.34L3 10z" /></svg>
+                            Video URL (Optional - YouTube preferred)
+                        </label>
+                        <input type="url" id="video-url" placeholder="Paste YouTube link or direct video file link" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 shadow-sm">
+                    </div>
+
+                    <div>
+                        <label for="article-content" class="block text-sm font-medium text-gray-700 mb-1">News Content</label>
+                        <textarea id="article-content" rows="6" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 shadow-sm resize-y"></textarea>
+                    </div>
+
+                    <div id="form-actions" class="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
+                        <button type="submit" id="submit-btn" class="flex-grow bg-red-500 text-white py-3 rounded-lg font-bold hover:bg-red-600 transition duration-300 focus:outline-none focus:ring-4 focus:ring-red-500 focus:ring-opacity-50 shadow-md disabled:opacity-50" disabled>
+                            <span id="btn-text">Save Article</span>
+                        </button>
+                        <button type="button" id="cancel-edit-btn" class="hidden sm:w-1/4 bg-gray-200 text-gray-700 py-3 rounded-lg font-bold hover:bg-gray-300 transition duration-300 focus:outline-none focus:ring-4 focus:ring-gray-400 focus:ring-opacity-50" onclick="resetFormState()">
+                            Cancel Edit
+                        </button>
+                    </div>
+
+                    <div id="form-message" class="text-sm text-center hidden"></div>
+                </form>
+            </section>
+
+            <!-- Articles List -->
+            <section>
+                <h2 class="text-2xl font-semibold text-gray-800 mb-4 flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-red-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 2v10a2 2 0 01-2 2h-6m-9-6h9" />
+                    </svg>
+                    Archived Reports
+                </h2>
+                <div id="articles-list" class="space-y-4">
+                    <!-- Articles will be inserted here -->
+                    <p class="text-center text-gray-500 p-4 bg-white rounded-xl shadow-inner" id="empty-state">No articles found yet. Write your first report above!</p>
+                </div>
+            </section>
+        </div>
+
+    </div>
+
+    <!-- Confirmation Modal HTML Structure -->
+    <div id="delete-modal-overlay" class="modal-overlay fixed inset-0 hidden flex items-center justify-center transition-opacity duration-300 ease-in-out">
+        <div id="delete-modal-content" class="modal-content bg-white p-6 rounded-lg shadow-2xl transform transition-transform duration-300 ease-in-out scale-95 md:min-w-96">
+            <h3 class="text-xl font-bold text-red-600 mb-4">Confirm Deletion</h3>
+            <p id="modal-text" class="text-gray-700 mb-6">Are you sure you want to permanently delete this report?</p>
+            <div class="flex justify-end space-x-3">
+                <button onclick="hideDeleteConfirmation()" class="px-4 py-2 bg-gray-300 text-gray-800 font-medium rounded-lg hover:bg-gray-400 transition">
+                    Cancel
+                </button>
+                <button id="confirm-delete-btn" class="px-4 py-2 bg-red-500 text-white font-medium rounded-lg hover:bg-red-600 transition">
+                    Delete
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        // Global variables provided by the Canvas environment
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        if (!firebaseConfig) {
+            document.getElementById('auth-status').textContent = 'Error: Firebase configuration missing.';
+            document.getElementById('loading-indicator').classList.add('hidden');
+            return;
+        }
+
+        // --- Firebase Imports ---
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, addDoc, onSnapshot, collection, query, serverTimestamp, setLogLevel, doc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- Firebase Initialization and Authentication ---
+        setLogLevel('Debug'); // Enable debug logging
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+
+        let userId = null;
+        let isAuthReady = false;
+        let currentEditId = null; // State to track the document ID being edited
+        let articlesCache = []; // Cache to store fetched articles for quick editing lookup
+
+        // UI Element References
+        const authStatusEl = document.getElementById('auth-status');
+        const loadingIndicatorEl = document.getElementById('loading-indicator');
+        const mainContentEl = document.getElementById('main-content');
+        const articlesListEl = document.getElementById('articles-list');
+        const newsForm = document.getElementById('news-form');
+        const submitBtn = document.getElementById('submit-btn');
+        const btnText = document.getElementById('btn-text');
+        const formMessageEl = document.getElementById('form-message');
+        const emptyStateEl = document.getElementById('empty-state');
+        const formTitleEl = document.getElementById('form-title');
+        const cancelEditBtn = document.getElementById('cancel-edit-btn');
+        // Form field references
+        const articleTitleEl = document.getElementById('article-title');
+        const articleDateEl = document.getElementById('article-date');
+        const imageUrlEl = document.getElementById('image-url');
+        const videoUrlEl = document.getElementById('video-url');
+        const articleContentEl = document.getElementById('article-content');
+        // Modal references
+        const deleteModalOverlay = document.getElementById('delete-modal-overlay');
+        const confirmDeleteBtn = document.getElementById('confirm-delete-btn');
+
+
+        /**
+         * Generates an HTML embed code for YouTube videos or direct video files.
+         * @param {string} url - The video URL.
+         * @returns {string} HTML embed code or null.
+         */
+        function getVideoEmbedHtml(url) {
+            if (!url) return '';
+            const youtubeRegex = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mb)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/;
+            const match = url.match(youtubeRegex);
+
+            if (match && match[1]) {
+                const videoId = match[1];
+                return `
+                    <div class="w-full aspect-video rounded-lg overflow-hidden mb-4 shadow-xl">
+                        <iframe
+                            class="w-full h-full"
+                            src="https://www.youtube.com/embed/${videoId}?rel=0"
+                            frameborder="0"
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                            allowfullscreen
+                            loading="lazy"
+                        ></iframe>
+                    </div>
+                `;
+            }
+
+            if (url.match(/\.(mp4|webm|ogg)$/i)) {
+                return `
+                    <video controls class="w-full aspect-video rounded-lg mb-4 shadow-xl border border-gray-200" loading="lazy">
+                        <source src="${url}" type="video/${url.split('.').pop()}">
+                        Your browser does not support the video tag.
+                    </video>
+                `;
+            }
+
+            return '';
+        }
+
+        /**
+         * Generates responsive image HTML.
+         * @param {string} url - The image URL.
+         * @returns {string} HTML image tag or empty string.
+         */
+        function getImageHtml(url) {
+            if (!url) return '';
+            const placeholderUrl = `https://placehold.co/600x400/CCCCCC/333333?text=Image+Load+Failed`;
+
+            return `
+                <img
+                    src="${url}"
+                    onerror="this.onerror=null;this.src='${placeholderUrl}';"
+                    alt="News Article Image"
+                    class="w-full h-auto max-h-96 object-contain rounded-lg mb-4 shadow-xl border border-gray-200"
+                    loading="lazy"
+                />
+            `;
+        }
+
+        // --- Form State Management ---
+        window.resetFormState = function() {
+            currentEditId = null;
+            newsForm.reset();
+            formTitleEl.textContent = 'Submit a New Weekly Report';
+            btnText.textContent = 'Save Article';
+            submitBtn.classList.remove('bg-blue-500', 'hover:bg-blue-600');
+            submitBtn.classList.add('bg-red-500', 'hover:bg-red-600');
+            cancelEditBtn.classList.add('hidden');
+            formMessageEl.classList.add('hidden');
+            window.scrollTo(0, 0); // Scroll to top to focus on the form
+        }
+
+        window.editArticle = function(articleId) {
+            const article = articlesCache.find(a => a.id === articleId);
+            if (!article) {
+                console.error("Article not found in cache for editing:", articleId);
+                return;
+            }
+
+            // 1. Set the edit state
+            currentEditId = articleId;
+
+            // 2. Populate form fields
+            articleTitleEl.value = article.title || '';
+            articleDateEl.value = article.articleDate || '';
+            imageUrlEl.value = article.imageUrl || '';
+            videoUrlEl.value = article.videoUrl || '';
+            articleContentEl.value = article.content || '';
+
+            // 3. Update button and ti
